@@ -14,11 +14,14 @@ import java.util.ArrayList;
 public class TinderBoltApp extends MultiSessionTelegramBot {
     public static final String TELEGRAM_BOT_NAME = "ut08bot"; //TODO: добавь имя бота в кавычках
     public static final String TELEGRAM_BOT_TOKEN = "telegram-token"; //TODO: добавь токен бота в кавычках
-    public static final String OPEN_AI_TOKEN = "ChatGPT-token"; //TODO: добавь токен ChatGPT в кавычках
+    public static final String OPEN_AI_TOKEN = "chatGPT-token"; //TODO: добавь токен ChatGPT в кавычках
 
     private ChatGPTService chatGPT = new ChatGPTService(OPEN_AI_TOKEN);
     private DialogMode currentMode = null;
     private ArrayList<String> list = new ArrayList<>();
+    private UserInfo me;
+    private UserInfo she;
+    private int questionCount;
 
     public TinderBoltApp() {
         super(TELEGRAM_BOT_NAME, TELEGRAM_BOT_TOKEN);
@@ -56,7 +59,7 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
             return;
 
         }
-        if (currentMode == DialogMode.GPT) {
+        if (currentMode == DialogMode.GPT && ! isMessageCommand()) {
             String prompt = loadPrompt("gpt");
 
             Message msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
@@ -82,7 +85,7 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
 
         }
 
-        if (currentMode == DialogMode.DATE) {
+        if (currentMode == DialogMode.DATE && ! isMessageCommand()) {
             String query = getCallbackQueryButtonKey();
             if (query.startsWith("date_")) {
                 sendPhotoMessage(query);
@@ -110,7 +113,7 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
             return;
         }
 
-        if (currentMode == DialogMode.MESSAGE) {
+        if (currentMode == DialogMode.MESSAGE && ! isMessageCommand()) {
             String query = getCallbackQueryButtonKey();
             if (query.startsWith("message_")) {
                 String prompt = loadPrompt(query);
@@ -125,6 +128,102 @@ public class TinderBoltApp extends MultiSessionTelegramBot {
             list.add(message);
             return;
         }
+
+        //Command PROFILE
+        if (message.equals("/profile")) {
+            currentMode = DialogMode.PROFILE;
+            sendPhotoMessage("profile");
+
+            me = new UserInfo();
+            questionCount = 1;
+            sendTextMessage("Сколько Вам лет?");
+            return;
+        }
+        if (currentMode == DialogMode.PROFILE && ! isMessageCommand()) {
+            switch (questionCount) {
+                case 1:
+                    me.age = message;
+                    questionCount = 2;
+                    sendTextMessage("Кем вы работаете?");
+                    return;
+                case 2:
+                    me.occupation = message;
+                    questionCount = 3;
+                    sendTextMessage("Какое у вас хобби?");
+                    return;
+                case 3:
+                    me.hobby = message;
+                    questionCount = 4;
+                    sendTextMessage("Что вам не нравится в людях?");
+                    return;
+                case 4:
+                    me.annoys = message;
+                    questionCount = 5;
+                    sendTextMessage("Цель знакомства?");
+                    return;
+                case 5:
+                    me.goals = message;
+
+                    String aboutMyself = me.toString();
+                    String prompt = loadPrompt("profile");
+
+                    Message msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
+                    String answer = chatGPT.sendMessage(prompt, aboutMyself);
+                    updateTextMessage(msg, answer);
+                    return;
+            }
+
+
+
+
+
+        }
+
+        //Command OPENER
+        if (message.equals("/opener")) {
+            currentMode = DialogMode.OPENER;
+            sendPhotoMessage("opener");
+
+            she = new UserInfo();
+            questionCount = 1;
+            sendTextMessage("Имя девушки?");
+            return;
+            }
+
+        if (currentMode == DialogMode.OPENER && ! isMessageCommand()) {
+            switch (questionCount) {
+                case 1:
+                    she.name = message;
+                    questionCount = 2;
+                    sendTextMessage("Сколько ей лет?");
+                    return;
+                case 2:
+                    she.age = message;
+                    questionCount = 3;
+                    sendTextMessage("Какое у нее хобби?");
+                    return;
+                case 3:
+                    she.hobby = message;
+                    questionCount = 4;
+                    sendTextMessage("Кем она работает?");
+                    return;
+                case 4:
+                    she.occupation = message;
+                    questionCount = 5;
+                    sendTextMessage("Цель знакомства?");
+                    return;
+                case 5:
+                    she.goals = message;
+                    String aboutFriend = she.toString();
+                    String prompt = loadPrompt("opener");
+
+                    Message msg = sendTextMessage("Подождите пару секунд - ChatGPT думает...");
+                    String answer = chatGPT.sendMessage(prompt, aboutFriend);
+                    updateTextMessage(msg, answer);
+                    return;
+
+                }
+            }
 
         sendTextMessage("*Привет!*");
         sendTextMessage("_Привет!_");
